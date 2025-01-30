@@ -19,6 +19,10 @@ const users = new Schema({
         type: String,
         required: true
     },
+    googleUserId: {
+        type: String,
+        required: false
+    },
 }, { timestamps: true })
 
 users.pre("save", async function (next: any): Promise<void> {

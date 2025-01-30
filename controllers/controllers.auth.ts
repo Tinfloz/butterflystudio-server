@@ -3,6 +3,7 @@ import { Users } from "../models/models.users";
 import { resObjectMaker } from "../utils/utils.response.instance";
 import { EMAIL_REGEX } from "../utils/utils.consts";
 import { createJwtToken } from "../utils/utils.get.token";
+import { OAuth2Client } from "google-auth-library";
 
 const signUp = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -48,6 +49,49 @@ const signIn = async (req: Request, res: Response): Promise<void> => {
     }
 } 
 
+const loginWithGoogle = async (req:Request,res:Response):Promise<void>=>{
+    try{
+        const {googleOAuthToken}=req.body;
+        if (!googleOAuthToken) throw resObjectMaker.getErrThrowResponseObject(400, "Required fields are missing!");
+        const client = new OAuth2Client();
+        const ticket = await client.verifyIdToken({
+            idToken: googleOAuthToken,
+            audience: process.env["GOOGLE_LOGIN_CLIENT_ID"]
+        });
+        const payload = ticket.getPayload();
+        const userid = payload?.sub
+        let userInMongo=await Users.findOne({email:payload?.email})
+        if(!userInMongo) {
+            userInMongo =  await Users.create({
+                email:payload?.email,
+                password:"",
+                name: payload?.name,
+                googleUserId: userid
+            })
+        }
+        res.status(200).json(
+            resObjectMaker.getOkResponseObject("Welcome to Butterfly Studio!", {
+                id: userInMongo._id,
+                name:userInMongo.name,
+                email: userInMongo.email,
+                token: createJwtToken(userInMongo._id)
+            })
+        )
+        
+        // If the request specified a Google Workspace domain:
+        // const domain = payload['hd'];
+    }
+    catch (error: any) {
+        console.error(error);
+        res.status(error?.status ?? 500).json(
+            error?.jsonBody ?? resObjectMaker.getErrResponseObject("Something went wrong!")
+        )
+    }
+    
+
+
+}
+
 export {
-    signUp, signIn
+    signUp, signIn, loginWithGoogle
 }
