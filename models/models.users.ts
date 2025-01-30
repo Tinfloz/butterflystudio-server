@@ -22,7 +22,11 @@ const users = new Schema({
     enterprise:{
         type:Types.ObjectId,
         ref:"Enterprise"
-    }
+    },
+    googleUserId: {
+        type: String,
+        required: false
+    },
 }, { timestamps: true })
 
 users.pre("save", async function (next: any): Promise<void> {
