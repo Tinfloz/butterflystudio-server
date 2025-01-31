@@ -7,6 +7,7 @@ import authRouter from "./routes/routes.auth";
 import configRouter from "./routes/routes.configuration";
 import { errorHandler } from "./middlewares/middlewares.error";
 import masterDataRouter from "./routes/routes.master.data";
+import generalConfigurationsRouter from "./routes/routes.general.configurations";
 
 config();
 
@@ -34,6 +35,7 @@ app.get("/", (_req: Request, res: Response) => {
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/config", configRouter);
 app.use("/api/v1/master-data", masterDataRouter);
+app.use("/api/v1/general-configurations", generalConfigurationsRouter);
 app.use(errorHandler);
 app.listen(process.env.PORT ?? 5001,
     () => console.log(`Up and running on port: ${process.env.PORT ?? 5001}`))
