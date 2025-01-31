@@ -12,8 +12,7 @@ const users = new Schema({
         match: [EMAIL_REGEX, 'Please enter a valid email address']
     },
     password: {
-        type: String,
-        required: false
+        type: String
     },
     name: {
         type: String,
@@ -34,7 +33,7 @@ users.pre("save", async function (next: any): Promise<void> {
         return next();
     }
     const salt = await bcrypt.genSalt(12);
-    this.password = await bcrypt.hash(this.password, salt);
+    this.password = await bcrypt.hash(this.password!, salt);
 })
 
 users.methods.matchPassword = async function (enteredPwd: string): Promise<boolean> {

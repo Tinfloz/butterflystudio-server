@@ -6,7 +6,8 @@ import { config } from "dotenv";
 import authRouter from "./routes/routes.auth";
 import configRouter from "./routes/routes.configuration";
 import { errorHandler } from "./middlewares/middlewares.error";
-import masterDataRouter from "./routes/routes.master_data";
+import masterDataRouter from "./routes/routes.master.data";
+
 config();
 
 const app = express();

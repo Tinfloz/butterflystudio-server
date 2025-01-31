@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticateUsers } from "../middlewares/middlewares.auth";
-import { getAllMasterData, getMasterDataById ,getMasterDataByName,getMasterDataByType} from "../controllers/controllers.master_data";
+import { getAllMasterData, getMasterDataById ,getMasterDataByName,getMasterDataByType} from "../controllers/controllers.master.data";
 let router = Router();
 
 router.route("/").get(authenticateUsers,getAllMasterData );
