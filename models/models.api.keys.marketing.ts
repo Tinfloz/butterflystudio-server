@@ -1,7 +1,7 @@
 import { Schema, Types, model } from "mongoose";
 import { IMarketingAgentApiKeys } from "../interfaces/interface.api.keys";
 
-const marketingAgentApiKeys = new Schema({
+const scraperApiKeys = new Schema({
     firecrawlKey: {
         type: String,
         required: true
@@ -12,8 +12,9 @@ const marketingAgentApiKeys = new Schema({
     },
     enterprise: {
         type: Types.ObjectId,
+        ref:"Enterprise",
         required: true
     }
 }, { timestamps: true })
 
-export const MarketingAgentKeys = model<IMarketingAgentApiKeys>("MarketingAgentKeys", marketingAgentApiKeys);
+export const ScraperApiKeys = model<IMarketingAgentApiKeys>("ScraperApiKeys", scraperApiKeys);

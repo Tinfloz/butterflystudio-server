@@ -10,6 +10,11 @@ const enterprise = new Schema({
         type: Types.ObjectId,
         required: true,
         ref: "Users"
+    },
+    status: {
+        type: Boolean,
+        required: true,
+        default: false
     }
 }, { timestamps: true })
 
