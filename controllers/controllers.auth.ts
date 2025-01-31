@@ -3,11 +3,12 @@ import { Users } from "../models/models.users";
 import { resObjectMaker } from "../utils/utils.response.instance";
 import { EMAIL_REGEX } from "../utils/utils.consts";
 import { createJwtToken } from "../utils/utils.get.token";
+import { IAuthSignIn, IAuthSignUp } from "../interfaces/interface.user";
 
 const signUp = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { email, name, password } = req.body;
-        if (!email || !name || !password) throw resObjectMaker.getErrThrowResponseObject(400, "Parameters are missing!");
+        const { email, name, password } = req.body as IAuthSignUp;
+        if (!email || !name || !password || email.trim().length === 0 || name.trim().length === 0 || password.trim().length === 0) throw resObjectMaker.getErrThrowResponseObject(400, "Parameters are missing!");
         const newUser = await Users.create(req.body);
         if (!newUser) throw resObjectMaker.getErrThrowResponseObject(500, "User could not be created");
         res.status(201).json(
@@ -26,8 +27,8 @@ const signUp = async (req: Request, res: Response): Promise<void> => {
 
 const signIn = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { cred, password } = req.body;
-        if (!cred || !password) throw resObjectMaker.getErrThrowResponseObject(400, "Required fields are missing!");
+        const { cred, password } = req.body as IAuthSignIn;
+        if (!cred || !password || cred.trim().length === 0 || password.trim().length === 0) throw resObjectMaker.getErrThrowResponseObject(400, "Required fields are missing!");
         const email = EMAIL_REGEX.test(cred);
         const user = await Users.findOne(email ? { email: cred } : { name: cred });
         if (!user) throw resObjectMaker.getErrThrowResponseObject(404, "No such user found");
@@ -37,6 +38,7 @@ const signIn = async (req: Request, res: Response): Promise<void> => {
                 id: user._id,
                 name: user.name,
                 email: user.email,
+                enterprise: user.enterprise,
                 token: createJwtToken(user._id)
             })
         )
@@ -46,7 +48,7 @@ const signIn = async (req: Request, res: Response): Promise<void> => {
             error?.jsonBody ?? resObjectMaker.getErrResponseObject("Something went wrong!")
         )
     }
-} 
+}
 
 export {
     signUp, signIn

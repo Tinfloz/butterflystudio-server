@@ -4,6 +4,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import { config } from "dotenv";
 import authRouter from "./routes/routes.auth";
+import configRouter from "./routes/routes.configuration";
 import { errorHandler } from "./middlewares/middlewares.error";
 
 config();
@@ -30,6 +31,7 @@ app.get("/", (_req: Request, res: Response) => {
 })
 
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/config", configRouter);
 
 app.use(errorHandler);
 app.listen(process.env.PORT ?? 5001,

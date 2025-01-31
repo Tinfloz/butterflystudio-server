@@ -1,4 +1,4 @@
-import { model, Schema } from "mongoose";
+import { model, Schema, Types } from "mongoose";
 import { EMAIL_REGEX } from "../utils/utils.consts";
 import bcrypt from "bcryptjs";
 import { IUser } from "../interfaces/interface.user";
@@ -19,6 +19,10 @@ const users = new Schema({
         type: String,
         required: true
     },
+    enterprise:{
+        type:Types.ObjectId,
+        ref:"Enterprise"
+    }
 }, { timestamps: true })
 
 users.pre("save", async function (next: any): Promise<void> {
