@@ -10,6 +10,7 @@ import { DocumentSource } from "../models/models.document.source";
 import { DOC_INTEGRATIONS } from "../utils/utils.consts";
 import { DocIntegration } from "../models/models.doc.integration";
 import { lengthChecker } from "../utils/utils.doc.source.utils";
+import { SlackIntegration } from "../models/models.slack.integration";
 
 const configureEnterprise = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -64,7 +65,9 @@ const configureApiKeysForScraper = async (req: Request, res: Response): Promise<
         })
         if (!newMarketingAgentKeys) throw resObjectMaker.getErrThrowResponseObject(500, "Could not store API Keys!");
         res.status(201).json(
-            resObjectMaker.getOkResponseObject("API Keys stored successfully!")
+            resObjectMaker.getOkResponseObject("API Keys stored successfully!", {
+                keyConfigId: newMarketingAgentKeys._id
+            })
         )
     } catch (error: any) {
         console.error(error);
@@ -111,7 +114,31 @@ const configureDocumentIntegration = async (req: Request, res: Response): Promis
         if (!newDocumentIntegration) throw resObjectMaker.getErrThrowResponseObject(500, "Could not create a new integration");
         res.status(200).json(
             resObjectMaker.getOkResponseObject("New integration has been created!", {
-                ...req.body
+                ...req.body,
+                docIntegrationId: newDocumentIntegration._id
+            })
+        )
+    } catch (error: any) {
+        console.error(error);
+        res.status(error?.status ?? 500).json(
+            error?.jsonBody ?? resObjectMaker.getErrResponseObject("Something went wrong!")
+        )
+    }
+}
+
+const configureSlack = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { channelId, slackOAuth } = req.body;
+        if (!channelId || !slackOAuth || lengthChecker(channelId) || lengthChecker(slackOAuth)) throw resObjectMaker.getErrThrowResponseObject(400, "Required parameters are missing!");
+        const { enterprise } = req.user as IUser;
+        const newSlackIntegration = await SlackIntegration.create({
+            ...req.body,
+            enterprise
+        })
+        res.status(200).json(
+            resObjectMaker.getOkResponseObject("Slack integration created successfully!", {
+                ...req.body,
+                slackConfigId: newSlackIntegration._id
             })
         )
     } catch (error: any) {
@@ -126,5 +153,6 @@ export {
     configureEnterprise,
     configureApiKeysForScraper,
     configureDocumentSource,
-    configureDocumentIntegration
+    configureDocumentIntegration,
+    configureSlack
 }

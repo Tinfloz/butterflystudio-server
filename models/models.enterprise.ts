@@ -4,7 +4,8 @@ import { IEnterprise } from "../interfaces/interface.enterprise";
 const enterprise = new Schema({
     name: {
         type: String,
-        required: true
+        required: true,
+        unique:true
     },
     createdBy: {
         type: Types.ObjectId,

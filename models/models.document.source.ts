@@ -10,7 +10,8 @@ const documentSource = new Schema({
     },
     personalAccessToken: {
         type: String,
-        required: true
+        required: true,
+        unique:true
     },
     enterprise:{
         type:Types.ObjectId,
