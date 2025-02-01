@@ -8,7 +8,9 @@ import { ScraperApiKeys } from "../models/models.api.keys.marketing";
 import { ServiceBusClient } from "@azure/service-bus";
 import { DocumentSource } from "../models/models.document.source";
 import axios from "axios";
-import { GITHUB_REPO_API } from "../utils/utils.consts";
+import { DOC_INTEGRATIONS, GITHUB_REPO_API } from "../utils/utils.consts";
+import { DocIntegration } from "../models/models.doc.integration";
+import { lengthChecker } from "../utils/utils.doc.source.utils";
 
 const configureEnterprise = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -75,9 +77,13 @@ const configureApiKeysForScraper = async (req: Request, res: Response): Promise<
 
 const configureDocumentSource = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { type, personalToken } = req.body;
-        if (!type || !personalToken || type.trim().length === 0 || personalToken.trim().length === 0) throw resObjectMaker.getErrThrowResponseObject(400, "Invalid parameters!");
-        const newDocumentSource = await DocumentSource.create(req.body);
+        const { repoType, personalAccessToken } = req.body;
+        if (!repoType || !personalAccessToken || lengthChecker(repoType) || lengthChecker(personalAccessToken)) throw resObjectMaker.getErrThrowResponseObject(400, "Invalid parameters!");
+        const { enterprise } = req.user as IUser;
+        const newDocumentSource = await DocumentSource.create({
+            ...req.body,
+            enterprise
+        });
         if (!newDocumentSource) throw resObjectMaker.getErrThrowResponseObject(500, "Could not add document source!");
         res.status(201).json(
             resObjectMaker.getOkResponseObject("Document source added successfully!", req.body)
@@ -85,25 +91,31 @@ const configureDocumentSource = async (req: Request, res: Response): Promise<voi
     } catch (error: any) {
         console.error(error);
         res.status(error?.status ?? 500).json(
-            error?.jsonBody ?? resObjectMaker.getErrResponseObject("SOmething went wrong!")
+            error?.jsonBody ?? resObjectMaker.getErrResponseObject("Something went wrong!")
         )
     }
 }
 
-const getAllReposGit = async (req: Request, res: Response): Promise<void> => {
+const configureDocumentIntegration = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { t } = req.query; 
-        const repos = (await axios.get(GITHUB_REPO_API, { 
-            headers:{
-                Authorization:`token ${t}`
-            }
-        })).data
+        const { repo, branch, docSourceType, ...rest } = req.body;
+        if (!repo || !branch || !docSourceType || lengthChecker(repo) || lengthChecker(branch) || lengthChecker(docSourceType)) throw resObjectMaker.getErrThrowResponseObject(400, "Fields are missing!");
+        if (Object.keys(rest)?.length === 0) throw resObjectMaker.getErrThrowResponseObject(400, "Required fields are missing!");
+        if (!DOC_INTEGRATIONS.includes(docSourceType)) throw resObjectMaker.getErrThrowResponseObject(400, "Illegal source type!");
+        if (docSourceType === "DevOps" && (!rest.org || !rest.project)) throw resObjectMaker.getErrThrowResponseObject(400, "Project and Organisation required for DevOps!");
+        if (docSourceType === "GitHub" && !rest.user) throw resObjectMaker.getErrThrowResponseObject(400, "User required for GitHUb!");
+        const { enterprise } = req.user as IUser;
+        const newDocumentIntegration = await DocIntegration.create({
+            enterprise,
+            ...req.body
+        })
+        if (!newDocumentIntegration) throw resObjectMaker.getErrThrowResponseObject(500, "Could not create a new integration");
         res.status(200).json(
-            resObjectMaker.getOkResponseObject("Here are your repos", {
-                repos
+            resObjectMaker.getOkResponseObject("New integration has been created!", {
+                ...req.body
             })
         )
-    } catch (error:any) {
+    } catch (error: any) {
         console.error(error);
         res.status(error?.status ?? 500).json(
             error?.jsonBody ?? resObjectMaker.getErrResponseObject("Something went wrong!")
@@ -115,5 +127,5 @@ export {
     configureEnterprise,
     configureApiKeysForScraper,
     configureDocumentSource,
-    getAllReposGit
+    configureDocumentIntegration
 }
