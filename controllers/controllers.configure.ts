@@ -7,8 +7,7 @@ import { IConfigureEnterprise, IMarketingAgentConfig } from "../interfaces/inter
 import { ScraperApiKeys } from "../models/models.api.keys.marketing";
 import { ServiceBusClient } from "@azure/service-bus";
 import { DocumentSource } from "../models/models.document.source";
-import axios from "axios";
-import { DOC_INTEGRATIONS, GITHUB_REPO_API } from "../utils/utils.consts";
+import { DOC_INTEGRATIONS } from "../utils/utils.consts";
 import { DocIntegration } from "../models/models.doc.integration";
 import { lengthChecker } from "../utils/utils.doc.source.utils";
 
