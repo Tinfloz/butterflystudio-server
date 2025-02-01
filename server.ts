@@ -8,6 +8,7 @@ import configRouter from "./routes/routes.configuration";
 import { errorHandler } from "./middlewares/middlewares.error";
 import masterDataRouter from "./routes/routes.master.data";
 import repoFetcherRouter from "./routes/routes.repo.fetcher";
+import taskRouter from "./routes/routes.tasks";
 
 config();
 
@@ -24,6 +25,7 @@ mongoose.connect(process.env.MONGO_URI!)
     .then(_res => console.log("Connected to mongo db"))
     .catch(err => console.error(err))
 
+
 // health check route
 app.get("/", (_req: Request, res: Response) => {
     res.status(200).json({
@@ -36,6 +38,7 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/config", configRouter);
 app.use("/api/v1/master-data", masterDataRouter);
 app.use("/api/v1/repos", repoFetcherRouter);
+app.use("/api/v1/tasks", taskRouter)
 
 app.use(errorHandler);
 
