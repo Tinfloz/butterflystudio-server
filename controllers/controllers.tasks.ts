@@ -1,17 +1,49 @@
 import { Request, Response } from "express";
 import { slackQueue } from "../queues/queues.slack.push";
 import { randomUUID } from "crypto";
+import { containerCreationQueue } from "../queues/queues.create.container";
 
 export const configureTasks = async (req: Request, res: Response) => {
-    const { channelId, oauth, message } = req.body;
+    // const { channelId, oauth, message } = req.body;
+    const {saName, container} = req.body;
     try {
-        const jobName = `sendMessage-${randomUUID()}`;     
-        const job = await slackQueue.add(
+        // const jobName = `sendMessage-${randomUUID()}`;   
+        const jobName = `createContainer-${randomUUID()}`;     
+
+        // const job = await slackQueue.add(
+        //     jobName,
+        //     {
+        //         channelId,
+        //         oauth,
+        //         message,
+        //         timestamp: new Date().toISOString()
+        //     },
+        //     {
+        //         attempts: 3,
+        //         backoff: {
+        //             type: 'exponential',
+        //             delay: 1000,
+        //         },
+        //         repeat: {
+        //             pattern: "* * * * *",
+        //             immediately: true
+        //         },
+        //         jobId: jobName,
+        //         removeOnComplete: {
+        //             age: 3600,
+        //             count: 1000
+        //         },
+        //         removeOnFail: {
+        //             age: 24 * 3600
+        //         }
+        //     }
+        // );
+
+        const job = await containerCreationQueue.add(
             jobName,
             {
-                channelId,
-                oauth,
-                message,
+                saName, 
+                container,
                 timestamp: new Date().toISOString()
             },
             {
@@ -19,10 +51,6 @@ export const configureTasks = async (req: Request, res: Response) => {
                 backoff: {
                     type: 'exponential',
                     delay: 1000,
-                },
-                repeat: {
-                    pattern: "* * * * *",
-                    immediately: true
                 },
                 jobId: jobName,
                 removeOnComplete: {
@@ -66,7 +94,7 @@ export const getQueueStatus = async (_req: Request, res: Response) => {
             failed: await slackQueue.getFailedCount(),
         };
         
-        res.status(200).json({
+        res.status(200).json({ 
             counts,
             jobs: jobs.map(job => ({
                 id: job.id,
