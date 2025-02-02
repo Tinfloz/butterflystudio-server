@@ -2,10 +2,11 @@ import { Request, Response } from "express";
 import { slackQueue } from "../queues/queues.slack.push";
 import { randomUUID } from "crypto";
 import { containerCreationQueue } from "../queues/queues.create.container";
+import { scraperQueue } from "../queues/queues.scraper";
 
 export const configureTasks = async (req: Request, res: Response) => {
     // const { channelId, oauth, message } = req.body;
-    const {saName, container} = req.body;
+    const {saName, container, enterprise, firecrawlApiKey, serperKey, q} = req.body;
     try {
         // const jobName = `sendMessage-${randomUUID()}`;   
         const jobName = `createContainer-${randomUUID()}`;     
@@ -44,6 +45,8 @@ export const configureTasks = async (req: Request, res: Response) => {
             {
                 saName, 
                 container,
+                enterprise, 
+                firecrawlApiKey, 
                 timestamp: new Date().toISOString()
             },
             {
@@ -68,11 +71,46 @@ export const configureTasks = async (req: Request, res: Response) => {
             name: job.name,
             timestamp: new Date().toISOString()
         });
-        
+        const jobNameTwo = `serper-${randomUUID()}`
+        const serperJob = await scraperQueue.add(
+            jobNameTwo,
+            {
+                q, 
+                jobNameTwo, 
+                serperKey,
+                enterprise, 
+                timestamp: new Date().toISOString()
+            },
+            {
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 1000,
+                },
+                repeat: {
+                    pattern: "*/10 * * * *",
+                    immediately: true
+                },
+                jobId: jobNameTwo,
+                removeOnComplete: {
+                    age: 3600,
+                    count: 1000
+                },
+                removeOnFail: {
+                    age: 24 * 3600
+                }
+            }
+        )
+        console.log('Job added to queue:', {
+            id: [job.id, serperJob.id],
+            name: [job.name, serperJob.name],
+            timestamp: new Date().toISOString()
+        });
+
         res.status(200).json({
             message: "Message scheduled successfully",
-            jobId: job.id,
-            name: job.name
+            jobId: [job.id, serperJob.id],
+            name: [job.name, serperJob.name]
         });
     } catch (error:any) {
         console.error('Error adding job to queue:', error);
