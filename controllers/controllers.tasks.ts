@@ -76,7 +76,7 @@ export const configureTasks = async (req: Request, res: Response) => {
             jobNameTwo,
             {
                 q, 
-                jobNameTwo, 
+                setName:jobNameTwo, 
                 serperKey,
                 enterprise, 
                 timestamp: new Date().toISOString()

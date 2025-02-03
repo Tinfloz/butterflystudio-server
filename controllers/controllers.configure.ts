@@ -5,12 +5,13 @@ import { Enterprise } from "../models/models.enterprise";
 import { Users } from "../models/models.users";
 import { IConfigureEnterprise, IMarketingAgentConfig } from "../interfaces/interface.enterprise";
 import { ScraperApiKeys } from "../models/models.api.keys.marketing";
-import { ServiceBusClient } from "@azure/service-bus";
 import { DocumentSource } from "../models/models.document.source";
 import { DOC_INTEGRATIONS } from "../utils/utils.consts";
 import { DocIntegration } from "../models/models.doc.integration";
 import { lengthChecker } from "../utils/utils.doc.source.utils";
 import { SlackIntegration } from "../models/models.slack.integration";
+import { storageAccQueue } from "../queues/queues.create.storageacc";
+import { randomUUID } from "crypto";
 
 const configureEnterprise = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -25,22 +26,30 @@ const configureEnterprise = async (req: Request, res: Response): Promise<void> =
         await Users.findByIdAndUpdate(_id, {
             enterprise: newEnterprise._id
         })
-        const sbClient = new ServiceBusClient(process.env.SB_CLIENT!);
-        const sbSender = sbClient.createSender(process.env.ENTERPRISE_QUEUE!);
-        try {
-            await sbSender.sendMessages({
-                body: {
-                    enterprise,
-                    objId: newEnterprise._id
+        const newJob = `sacreator-${randomUUID()}`
+        await storageAccQueue.add(
+            newJob,
+            {
+                storageAccName:enterprise.toLowerCase().replace(/ /g, ""),
+                objId:newEnterprise._id,
+                timestamp: new Date().toISOString()
+            },
+            {
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 1000,
+                },
+                jobId: newJob,
+                removeOnComplete: {
+                    age: 3600,
+                    count: 1000
+                },
+                removeOnFail: {
+                    age: 24 * 3600
                 }
-            })
-        } catch (error) {
-            console.error(error);
-            throw resObjectMaker.getErrThrowResponseObject(500, "Something failed while creating enterprise");
-        } finally {
-            await sbSender.close();
-            await sbClient.close();
-        }
+            }
+        )
         res.status(201).json(
             resObjectMaker.getOkResponseObject("Enterprise created successfully!", {
                 enterprise
