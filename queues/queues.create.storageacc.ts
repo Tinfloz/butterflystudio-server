@@ -1,21 +1,11 @@
 import { Queue } from "bullmq";
 import { redisClient } from "../config/config.redis";
+import { DEFAULT_QUEUE_OPTIONS } from "../utils/utils.consts";
 
 export const storageAccQueue = new Queue('storageAccQueue', {
     connection: redisClient,
     defaultJobOptions: {
-        removeOnComplete: {
-            age: 3600,
-            count: 1000
-        },
-        removeOnFail: {
-            age: 24 * 3600
-        },
-        attempts: 3,
-        backoff: {
-            type: 'exponential',
-            delay: 1000,
-        },
+        ...DEFAULT_QUEUE_OPTIONS
     },
 })
 

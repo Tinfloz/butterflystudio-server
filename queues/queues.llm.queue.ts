@@ -2,17 +2,18 @@ import { Queue } from "bullmq";
 import { redisClient } from "../config/config.redis";
 import { DEFAULT_QUEUE_OPTIONS } from "../utils/utils.consts";
 
-export const containerCreationQueue = new Queue('containerCreationQueue', {
+export const llmQueue = new Queue('llmQueue', {
     connection: redisClient,
     defaultJobOptions: {
-        ...DEFAULT_QUEUE_OPTIONS
+        ...DEFAULT_QUEUE_OPTIONS,
+        delay: 15 * 60 * 1000
     },
 })
 
-containerCreationQueue.on('error', (err) => {
+llmQueue.on('error', (err) => {
     console.error('Queue error:', err);
 });
 
-containerCreationQueue.on('waiting', (jobId) => {
+llmQueue.on('waiting', (jobId) => {
     console.log('Job waiting:', jobId);
 });

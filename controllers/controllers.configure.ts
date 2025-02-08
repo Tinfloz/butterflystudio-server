@@ -6,12 +6,13 @@ import { Users } from "../models/models.users";
 import { IConfigureEnterprise, IMarketingAgentConfig } from "../interfaces/interface.enterprise";
 import { ScraperApiKeys } from "../models/models.api.keys.marketing";
 import { DocumentSource } from "../models/models.document.source";
-import { DOC_INTEGRATIONS } from "../utils/utils.consts";
+import { DOC_INTEGRATIONS, GET_ACCESS_TOKEN_GITHUB } from "../utils/utils.consts";
 import { DocIntegration } from "../models/models.doc.integration";
 import { lengthChecker } from "../utils/utils.doc.source.utils";
 import { SlackIntegration } from "../models/models.slack.integration";
 import { storageAccQueue } from "../queues/queues.create.storageacc";
 import { randomUUID } from "crypto";
+import axios from "axios";
 
 const configureEnterprise = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -30,8 +31,8 @@ const configureEnterprise = async (req: Request, res: Response): Promise<void> =
         await storageAccQueue.add(
             newJob,
             {
-                storageAccName:enterprise.toLowerCase().replace(/ /g, ""),
-                objId:newEnterprise._id,
+                storageAccName: enterprise.toLowerCase().replace(/ /g, ""),
+                objId: newEnterprise._id,
                 timestamp: new Date().toISOString()
             },
             {
@@ -86,18 +87,22 @@ const configureApiKeysForScraper = async (req: Request, res: Response): Promise<
     }
 }
 
-const configureDocumentSource = async (req: Request, res: Response): Promise<void> => {
+const devopsIntegration = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { repoType, personalAccessToken } = req.body;
-        if (!repoType || !personalAccessToken || lengthChecker(repoType) || lengthChecker(personalAccessToken)) throw resObjectMaker.getErrThrowResponseObject(400, "Invalid parameters!");
+        const { personalAccessToken } = req.body;
+        if (!personalAccessToken || lengthChecker(personalAccessToken)) throw resObjectMaker.getErrThrowResponseObject(400, "Invalid parameters!");
         const { enterprise } = req.user as IUser;
         const newDocumentSource = await DocumentSource.create({
             ...req.body,
+            repoType: "DevOps",
             enterprise
         });
         if (!newDocumentSource) throw resObjectMaker.getErrThrowResponseObject(500, "Could not add document source!");
         res.status(201).json(
-            resObjectMaker.getOkResponseObject("Document source added successfully!", req.body)
+            resObjectMaker.getOkResponseObject("Document source added successfully!", {
+                repoType: "DevOps",
+                devopsIntegrationId: newDocumentSource._id
+            })
         )
     } catch (error: any) {
         console.error(error);
@@ -114,7 +119,7 @@ const configureDocumentIntegration = async (req: Request, res: Response): Promis
         if (Object.keys(rest)?.length === 0) throw resObjectMaker.getErrThrowResponseObject(400, "Required fields are missing!");
         if (!DOC_INTEGRATIONS.includes(docSourceType)) throw resObjectMaker.getErrThrowResponseObject(400, "Illegal source type!");
         if (docSourceType === "DevOps" && (!rest.org || !rest.project)) throw resObjectMaker.getErrThrowResponseObject(400, "Project and Organisation required for DevOps!");
-        if (docSourceType === "GitHub" && !rest.user) throw resObjectMaker.getErrThrowResponseObject(400, "User required for GitHUb!");
+        if (docSourceType === "GitHub" && !rest.owner) throw resObjectMaker.getErrThrowResponseObject(400, "User required for GitHub!");
         const { enterprise } = req.user as IUser;
         const newDocumentIntegration = await DocIntegration.create({
             enterprise,
@@ -158,10 +163,47 @@ const configureSlack = async (req: Request, res: Response): Promise<void> => {
     }
 }
 
+const githubIntegration = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { code } = req.body;
+        if (!code || lengthChecker(code)) throw resObjectMaker.getErrThrowResponseObject(400, "Invalid oauth code for GitHub!");
+        const { enterprise } = req.user as IUser;
+        const token = (await axios.post(GET_ACCESS_TOKEN_GITHUB, {
+            client_id: process.env.CLIENT_ID_GITHUB,
+            client_secret: process.env.CLIENT_SECRET_GITHUB,
+            code,
+            redirect_uri: process.env.REDIRECT_URI_GITHUB
+        }, {
+            headers: {
+                Accept: 'application/json'
+            }
+        }))?.data?.access_token
+        if (!token) throw resObjectMaker.getErrThrowResponseObject(401, "Could not authenticate GitHub");
+        const newDocumentSource = await DocumentSource.create({
+            enterprise,
+            repoType: "GitHub",
+            personalAccessToken: token
+        })
+        if (!newDocumentSource) throw resObjectMaker.getErrThrowResponseObject(500, "Could not create a new integration");
+        res.status(201).json(
+            resObjectMaker.getOkResponseObject("GitHub source successfully created!", {
+                repoType: "GitHub",
+                githubIntegrationId: newDocumentSource._id
+            })
+        )
+    } catch (error: any) {
+        console.error(error);
+        res.status(error?.status ?? 500).json(
+            error?.jsonBody ?? resObjectMaker.getErrResponseObject("Something went wrong!")
+        )
+    }
+}
+
 export {
     configureEnterprise,
     configureApiKeysForScraper,
-    configureDocumentSource,
+    devopsIntegration,
     configureDocumentIntegration,
-    configureSlack
+    configureSlack,
+    githubIntegration
 }

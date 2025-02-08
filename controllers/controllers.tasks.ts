@@ -6,21 +6,21 @@ import { containerCreationQueue } from "../queues/queues.create.container";
 import { SecretClient } from "@azure/keyvault-secrets";
 import { createEndpoint } from "../utils/utils.get.endpoint";
 import { bulkUploads } from "../utils/utils.bulk.upload";
+import { DocIntegration } from "../models/models.doc.integration";
 
 export const configureTasks = async (req: Request, res: Response) => {
     // const { channelId, oauth, message } = req.body;
     // const {saName, container, enterprise, firecrawlApiKey, serperKey, q} = req.body;
-    const {enterprise, fileNames, content, mimeTypes, container, firecrawlApiKey} = req.body;
+    const {enterprise, fileNames, content, mimeTypes, container, firecrawlApiKey, integrationId} = req.body;
     try {
         // const jobName = `sendMessage-${randomUUID()}`;   
         const credentials = new  DefaultAzureCredential();
         const secretClient = new SecretClient(process.env.KEYVAULT_URL!, credentials);
         const saName = enterprise.toLowerCase().replace(/ /g,'');
         const accountkey = (await secretClient.getSecret(`${saName}-secret`))?.value;
-        console.log(accountkey, "dddd")
         const endpoint = createEndpoint(accountkey!, saName);
         const sasUrls = await bulkUploads(endpoint, content, fileNames,mimeTypes, saName, accountkey!);
-        const jobName = `createContainer-${randomUUID()}`;     
+        const jobName = `createContainer-${randomUUID()}`;
         // const job = await slackQueue.add(
         //     jobName,
         //     {
@@ -49,7 +49,7 @@ export const configureTasks = async (req: Request, res: Response) => {
         //         }
         //     }
         // );
-
+        const {branch, repo, docSourceType, docSource:{personalAccessToken}, ...rest} = await DocIntegration.findById(integrationId).populate("docSource").lean() as any;
         const job = await containerCreationQueue.add(
             jobName,
             {
@@ -59,6 +59,11 @@ export const configureTasks = async (req: Request, res: Response) => {
                 sasUrls,
                 accountkey,
                 firecrawlApiKey, 
+                integrationType:docSourceType,
+                repo,
+                branch, 
+                PAT:personalAccessToken,
+                ...rest,
                 timestamp: new Date().toISOString()
             },
             {

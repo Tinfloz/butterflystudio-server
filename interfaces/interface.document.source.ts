@@ -11,7 +11,7 @@ export interface IDocIntegration extends Document {
     branch: string;
     repo: string;
     docSourceType: "DevOps" | "GitHub";
-    user?: string;
+    owner?: string;
     org?:string;
     project?:string,
     enterprise:Schema.Types.ObjectId

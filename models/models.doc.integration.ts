@@ -21,7 +21,7 @@ const docIntegration = new Schema<IDocIntegration>({
         enum: DOC_INTEGRATIONS,
         required: true
     },
-    user: {
+    owner: {
         type: String,
         required: function (): boolean {
             return this.docSourceType === "GitHub"
