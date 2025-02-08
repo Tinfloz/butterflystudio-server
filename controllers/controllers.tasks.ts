@@ -1,16 +1,26 @@
 import { Request, Response } from "express";
 import { slackQueue } from "../queues/queues.slack.push";
 import { randomUUID } from "crypto";
+import { DefaultAzureCredential } from "@azure/identity";
 import { containerCreationQueue } from "../queues/queues.create.container";
-import { scraperQueue } from "../queues/queues.scraper";
+import { SecretClient } from "@azure/keyvault-secrets";
+import { createEndpoint } from "../utils/utils.get.endpoint";
+import { bulkUploads } from "../utils/utils.bulk.upload";
 
 export const configureTasks = async (req: Request, res: Response) => {
     // const { channelId, oauth, message } = req.body;
-    const {saName, container, enterprise, firecrawlApiKey, serperKey, q} = req.body;
+    // const {saName, container, enterprise, firecrawlApiKey, serperKey, q} = req.body;
+    const {enterprise, fileNames, content, mimeTypes, container, firecrawlApiKey} = req.body;
     try {
         // const jobName = `sendMessage-${randomUUID()}`;   
+        const credentials = new  DefaultAzureCredential();
+        const secretClient = new SecretClient(process.env.KEYVAULT_URL!, credentials);
+        const saName = enterprise.toLowerCase().replace(/ /g,'');
+        const accountkey = (await secretClient.getSecret(`${saName}-secret`))?.value;
+        console.log(accountkey, "dddd")
+        const endpoint = createEndpoint(accountkey!, saName);
+        const sasUrls = await bulkUploads(endpoint, content, fileNames,mimeTypes, saName, accountkey!);
         const jobName = `createContainer-${randomUUID()}`;     
-
         // const job = await slackQueue.add(
         //     jobName,
         //     {
@@ -46,6 +56,8 @@ export const configureTasks = async (req: Request, res: Response) => {
                 saName, 
                 container,
                 enterprise, 
+                sasUrls,
+                accountkey,
                 firecrawlApiKey, 
                 timestamp: new Date().toISOString()
             },
@@ -66,53 +78,54 @@ export const configureTasks = async (req: Request, res: Response) => {
             }
         );
 
+        // console.log('Job added to queue:', {
+        //     id: job.id,
+        //     name: job.name,
+        //     timestamp: new Date().toISOString()
+        // });
+        // const jobNameTwo = `serper-${randomUUID()}`
+        // const serperJob = await scraperQueue.add(
+        //     jobNameTwo,
+        //     {
+        //         q, 
+        //         setName:jobNameTwo, 
+        //         serperKey,
+        //         enterprise, 
+        //         timestamp: new Date().toISOString()
+        //     },
+        //     {
+        //         attempts: 3,
+        //         backoff: {
+        //             type: 'exponential',
+        //             delay: 1000,
+        //         },
+        //         repeat: {
+        //             pattern: "*/10 * * * *",
+        //             immediately: true
+        //         },
+        //         jobId: jobNameTwo,
+        //         removeOnComplete: {
+        //             age: 3600,
+        //             count: 1000
+        //         },
+        //         removeOnFail: {
+        //             age: 24 * 3600
+        //         }
+        //     }
+        // )
         console.log('Job added to queue:', {
             id: job.id,
             name: job.name,
             timestamp: new Date().toISOString()
         });
-        const jobNameTwo = `serper-${randomUUID()}`
-        const serperJob = await scraperQueue.add(
-            jobNameTwo,
-            {
-                q, 
-                setName:jobNameTwo, 
-                serperKey,
-                enterprise, 
-                timestamp: new Date().toISOString()
-            },
-            {
-                attempts: 3,
-                backoff: {
-                    type: 'exponential',
-                    delay: 1000,
-                },
-                repeat: {
-                    pattern: "*/10 * * * *",
-                    immediately: true
-                },
-                jobId: jobNameTwo,
-                removeOnComplete: {
-                    age: 3600,
-                    count: 1000
-                },
-                removeOnFail: {
-                    age: 24 * 3600
-                }
-            }
-        )
-        console.log('Job added to queue:', {
-            id: [job.id, serperJob.id],
-            name: [job.name, serperJob.name],
-            timestamp: new Date().toISOString()
-        });
 
         res.status(200).json({
             message: "Message scheduled successfully",
-            jobId: [job.id, serperJob.id],
-            name: [job.name, serperJob.name]
+            jobId: job.id,
+            name: job.name,
+            accountkey
         });
-    } catch (error:any) {
+    } catch (error: any) {
         console.error('Error adding job to queue:', error);
         res.status(500).json({
             message: "Failed to schedule message",
@@ -131,8 +144,8 @@ export const getQueueStatus = async (_req: Request, res: Response) => {
             completed: await slackQueue.getCompletedCount(),
             failed: await slackQueue.getFailedCount(),
         };
-        
-        res.status(200).json({ 
+
+        res.status(200).json({
             counts,
             jobs: jobs.map(job => ({
                 id: job.id,
@@ -142,7 +155,7 @@ export const getQueueStatus = async (_req: Request, res: Response) => {
                 timestamp: job.timestamp
             }))
         });
-    } catch (error:any) {
+    } catch (error: any) {
         res.status(500).json({
             message: "Failed to get queue status",
             error: error.message
